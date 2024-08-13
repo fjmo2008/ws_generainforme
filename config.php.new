@@ -1,0 +1,20 @@
+<?php
+
+class Url
+{
+	// Url del webservice para consultar las vistas del centro
+	const VISTAS = 'http://...';
+	// Url del webservice para obtener el listado de pacientes desde la vista seleccionada
+	const CONSULTA = 'http://...';
+
+	// Url del webservice SOAP que devuelve el contenido del informe en pdf del servicio de analiticas, y el usuario y password para consumir el webservice
+	const SOAP = 'https://...';
+	const SOAP_USER = 'xxx';
+	const SOAP_PASS = 'xxx';
+
+	// usr del webservice que obtiene el contenido del informe en pdf, en dos partes, entre medias se inserta el sid del documento
+	const INFORME_TICARES_01 = 'https://...';
+	const INFORME_TICARES_02 = '...';
+
+}
+?>
