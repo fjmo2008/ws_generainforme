@@ -136,6 +136,20 @@
 
                 }
 
+                // Informe pdf subido a ticares con los formatos de la UTE
+                if ($row['ESTADO']='7201') {
+                    $url_inf = Url::INFORME_TICARES_01.$row['SID_DOCUMENTO'].Url::INFORME_TICARES_02;
+
+                    $arrContextOptions=array(
+                        "ssl"=>array(
+                            "verify_peer"=>false,
+                            "verify_peer_name"=>false,
+                        ),
+                    );
+                    $informe = file_get_contents($url_inf, false, stream_context_create($arrContextOptions));
+
+                }
+
                 // Informe de laboratorio desde Servolab para Sevilla
                 if ($row['ESTADO']=='LABOR') {
                     $parametros['sidInforme']=$row['SID_DOCUMENTO'];
@@ -153,7 +167,7 @@
 
                 }
 
-                if ($row['ESTADO']=='PDF' or $row['ESTADO']=='Firmado' or $row['ESTADO']=='LABOR') { 
+                if ($row['ESTADO']=='PDF' or $row['ESTADO']=='Firmado' or $row['ESTADO']=='LABOR' or $row['ESTADO']=='7201') { 
                     // Genera el nombre del fichero con los campos y el separador definido en el formato
                     // Hay que comprobar si hay campos en la definicion del formato o no, en caso de que no, no se podrán generar los ficheros pdf
                     $contador_campo = 1;
@@ -189,8 +203,17 @@
             // Si no se usa el formato del SAS, se generan los informes de esta otra forma, ya que no se comprueba que tengan NUHSA ni CENTRO_REMITE
             // Informe de ticares firmado
             if ($row['ESTADO']=='Firmado') {
-                $informe = file_get_contents(Url::INFORME_TICARES_01.$row['SID_DOCUMENTO'].Url::INFORME_TICARES_02);
+                // $informe = file_get_contents(Url::INFORME_TICARES_01.$row['SID_DOCUMENTO'].Url::INFORME_TICARES_02); // original
+                $url_inf = Url::INFORME_TICARES_01.$row['SID_DOCUMENTO'].Url::INFORME_TICARES_02;
                 
+                $arrContextOptions=array(
+                    "ssl"=>array(
+                        "verify_peer"=>false,
+                        "verify_peer_name"=>false,
+                    ),
+                );
+                $informe = file_get_contents($url_inf, false, stream_context_create($arrContextOptions));
+
                 // Genera el nombre del fichero con los campos y el separador definido en el formato
                 // Hay que comprobar si hay campos en la definicion del formato o no, en caso de que no, no se podrán generar los ficheros pdf
                 $contador_campo = 1;
