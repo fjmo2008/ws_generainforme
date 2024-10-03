@@ -1,4 +1,5 @@
 <?php
+    //include('cabecera.php');
     // Hay que poner estas cabeceras para que el cliente de este web service no de error de COORS
     header('Access-Control-Allow-Origin: *');
     header("Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept");
@@ -15,6 +16,13 @@
     $obj = json_decode($json,true);
 
     // Populate ID from JSON $obj array and store into $ID variable.
+    // $param_fechad = "03-09-2024";
+    // $param_fechah = "03-09-2024";
+    // $vista = "V03_INFORMESALTASAS_COPA05_18B";
+    // $centro = "03";
+    // $fecha_generado = "20241002183259";
+
+    // Populate ID from JSON $obj array and store into $ID variable.
     $param_fechad = $obj["fechad"];
     $param_fechah = $obj["fechah"];
     $vista = $obj["vista"];
@@ -22,7 +30,7 @@
     $fecha_generado = $obj["fecha_generada"];
 
 
-    // llama al webservice con la vista seleccionada para obtener el formato a usar
+
     $urlvistas = Url::VISTAS.$vista;
 
     //  Initiate curl
@@ -37,9 +45,8 @@
     curl_close($ch);
 
     $formato = $result;
-    //echo $formato;
 
-    foreach($formato as $row) {
+   foreach($formato as $row) {
         $separador = $row['SEPARADOR'];
         $estructura = $row['ESTRUCTURA'];
         $arr_campos = explode(",", $estructura);
@@ -81,7 +88,6 @@
     $zip = new ZipArchive();
     $nombrezip = "./zip/".$centro."/".$centro."_".$fecha_generado."_".str_replace('-','',$param_fechad)."_".str_replace('-','',$param_fechah).".zip";
 
-
     // ****************************************************************************************************
     //
     //  Servicio SOAP para recuperar los ficheros pdf de Servolab
@@ -100,15 +106,24 @@
 
     $zip->open($nombrezip,ZipArchive::CREATE);
 
+    
+    // Abrimos el fichero log para añadir el registro de lo que se genera como PDF
+    $fp = fopen("./logpdf.log","a");
+
     $tablaResultado = [];
+    $i=1;
     // recorremos todos los pacientes para generar los informes
     foreach($tabla as $row) {
-        $contador = 1;
+        // El nombre del fichero está vacío hasta que no se genere el informe
+        $row['FICHERO'] = '';
+
+        // Si es con formato SAS se generan de esta forma
         if ($sas == 'S') {
-            $row['FICHERO'] = '';
-            // Si es con formato SAS, se generan de esta forma
+
+            // Debe tener el NUHSA y el CENTRO_REMITE
             if (!empty($row['NUHSA']) and !empty($row['CENTRO_REMITE'])) {
-                // Informe de ticares firmado
+
+                // Informe de TiCares FIRMADO
                 if ($row['ESTADO']=='Firmado') {
                     $url_inf = Url::INFORME_TICARES_01.$row['SID_DOCUMENTO'].Url::INFORME_TICARES_02;
 
@@ -119,35 +134,6 @@
                         ),
                     );
                     $informe = file_get_contents($url_inf, false, stream_context_create($arrContextOptions));
-
-                }
-                
-                // Informe pdf subido a ticares
-                if ($row['ESTADO']=='PDF') {
-                    $url_inf = Url::INFORME_TICARES_01.$row['SID_DOCUMENTO'].Url::INFORME_TICARES_02;
-
-                    $arrContextOptions=array(
-                        "ssl"=>array(
-                            "verify_peer"=>false,
-                            "verify_peer_name"=>false,
-                        ),
-                    );
-                    $informe = file_get_contents($url_inf, false, stream_context_create($arrContextOptions));
-
-                }
-
-                // Informe pdf subido a ticares con los formatos de la UTE
-                if ($row['ESTADO']='7201') {
-                    $url_inf = Url::INFORME_TICARES_01.$row['SID_DOCUMENTO'].Url::INFORME_TICARES_02;
-
-                    $arrContextOptions=array(
-                        "ssl"=>array(
-                            "verify_peer"=>false,
-                            "verify_peer_name"=>false,
-                        ),
-                    );
-                    $informe = file_get_contents($url_inf, false, stream_context_create($arrContextOptions));
-
                 }
 
                 // Informe de laboratorio desde Servolab para Sevilla
@@ -160,14 +146,45 @@
                         echo "error<br>";
                         trigger_error("SOAP Fault: (faultcode: {$result->faultcode}, faultstring: {$result->faultstring})", E_USER_ERROR);
                     } else {
-
                         $informe = $result->InformePdf; // Cargo el PDF en la variable
                     }
-
-
                 }
 
-                if ($row['ESTADO']=='PDF' or $row['ESTADO']=='Firmado' or $row['ESTADO']=='LABOR' or $row['ESTADO']=='7201') { 
+                // Informe subido a TiCares en formato PDF
+                if ($row['ESTADO']=='PDF') {
+                    $url_inf = Url::INFORME_PDF_01.$row['SID_DOCUMENTO'].Url::INFORME_PDF_02;
+
+                    $arrContextOptions=array(
+                        "ssl"=>array(
+                            "verify_peer"=>false,
+                            "verify_peer_name"=>false,
+                        ),
+                        "https"=>array(
+                            "timeout"=>120,
+                            "user_agent"=>"Mozilla/5.0 (Windows NT 6.1; Trident/7.0; rv:11.0) like Gecko",
+                        ),
+                    );
+
+                    $informe = file_get_contents($url_inf, false, stream_context_create($arrContextOptions));
+                
+                    fputs($fp, $url_inf.chr(10));
+/*
+                    $contador_campo = 1;
+                    $rutapdf = './pdf/03/';
+                    $ficheropdf = $i;
+                    $ficheropdf = $ficheropdf.'.pdf';
+                    $ficheropdfzip = $ficheropdf;
+                    $bytesEscritos = file_put_contents($rutapdf.$ficheropdf,$informe);  // Añade el nº de bytes escritos en el fichero
+                    echo $ficheropdfzip.' - ['.$bytesEscritos.']';
+
+                    // Añadimos el fichero pdf al zip
+                    $zip->addFile($rutapdf.$ficheropdf,$ficheropdfzip);
+                    $i++;
+*/                    
+                }
+
+                // Una vez obtenido el informe, lo guardamos en el fichero con el formato correspondiente
+                if ($row['ESTADO']=='PDF' or $row['ESTADO']=='Firmado' or $row['ESTADO']=='LABOR') { 
                     // Genera el nombre del fichero con los campos y el separador definido en el formato
                     // Hay que comprobar si hay campos en la definicion del formato o no, en caso de que no, no se podrán generar los ficheros pdf
                     $contador_campo = 1;
@@ -193,19 +210,19 @@
                     // Añadimos el fichero pdf al zip
                     $zip->addFile($rutapdf.$ficheropdf,$ficheropdfzip);
 
-                } else {
-                    $row['FICHERO'] = '';
-                }
-            } else {
-                $row['FICHERO'] = '';
+                    //echo $row['FICHERO']."<br>";
+                }                
+
             }
-        } else {
-            // Si no se usa el formato del SAS, se generan los informes de esta otra forma, ya que no se comprueba que tengan NUHSA ni CENTRO_REMITE
-            // Informe de ticares firmado
+        } 
+        // En caso contrario que no sean con formato SAS, usan esta otra
+        else {
+
+            // El informe de TiCares tiene que estar firmado
             if ($row['ESTADO']=='Firmado') {
                 // $informe = file_get_contents(Url::INFORME_TICARES_01.$row['SID_DOCUMENTO'].Url::INFORME_TICARES_02); // original
                 $url_inf = Url::INFORME_TICARES_01.$row['SID_DOCUMENTO'].Url::INFORME_TICARES_02;
-                
+
                 $arrContextOptions=array(
                     "ssl"=>array(
                         "verify_peer"=>false,
@@ -246,9 +263,13 @@
 
     }
 
-    // Cerramos el zip y ya podriamos enviarlo
-     $zip->close();
+    // Cerramos el fichero de log
+    fclose($fp);
 
+    // Cerramos el zip
+    $zip->close();
+
+    // Quitamos el semáforo
     unlink($semaforo_fichero);
 
     // El array $tablaResultado contiene todos los pacientes con sus informes y el nombre del fichero que se ha generado.
@@ -257,3 +278,4 @@
     echo json_encode($tablaResultado);
 
 ?>
+

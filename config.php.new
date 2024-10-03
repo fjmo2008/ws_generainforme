@@ -16,5 +16,9 @@ class Url
 	const INFORME_TICARES_01 = 'https://...';
 	const INFORME_TICARES_02 = '...';
 
+	// usr del webservice que obtiene el contenido del informe en pdf, para los documentos subidos en PDF
+	const INFORME_PDF_01 = 'https://...';
+	const INFORME_PDF_02 = '...';
+
 }
 ?>
